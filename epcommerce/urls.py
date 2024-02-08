@@ -1,8 +1,7 @@
-"""
-URL configuration for epcommerce project.
+"""backend URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.2/topics/http/urls/
+    https://docs.djangoproject.com/en/4.0/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -15,8 +14,31 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include, re_path
+from django.conf.urls.static import static
+from django.conf import settings
+from django.views.generic import TemplateView
 
+# from djoser.views import (
+#     PasswordResetView,
+#     PasswordResetConfirmView,
+#     SetPasswordView,
+# )
+
+# urls.py
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('product/', include("productapp.urls")),
+    path('profile/', include("profileapp.urls")),
+    # path('auth/', include('djoser.urls.jwt')),
+    # path('password/reset/', PasswordResetView.as_view(), name='password_reset'),
+    # path('password/reset/confirm/<uid>/<token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    # path('password/reset/complete/', SetPasswordView.as_view(), name='password_reset_complete'),
+    path('api-auth/', include("rest_framework.urls", namespace='rest_framework')),
+    
 ]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# urlpatterns += [re_path(r'^.*', TemplateView.as_view(template_name='index.html'))]
+
