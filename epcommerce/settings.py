@@ -67,6 +67,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+
+    "corsheaders.middleware.CorsMiddleware",
+
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -137,7 +140,11 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_ROOT=os.path.join(BASE_DIR, 'media')
 MEDIA_URL='/media/'
-CORS_ALLOW_ALL_ORIGINS= True
+CORS_ALLOWED_ORIGINS = [
+    "https://epcommerce.vercel.app",
+    'http://localhost:3000'
+    # Add any other allowed origins as needed
+]
 
 
 # Default primary key field type
