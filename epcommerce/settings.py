@@ -31,11 +31,11 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 SECRET_KEY =SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = ["http://localhost:3000"]
+ALLOWED_HOSTS = ["http://localhost:3000", '127.0.0.1']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
+    DEBUG = False
     SESSION_COOKIE_SECURE= True
     CSRF_COOKIE_SECURE=True
     SECURE_HSTS_SECONDS=3600
@@ -43,6 +43,8 @@ if RENDER_EXTERNAL_HOSTNAME:
     SECURE_HSTS_INCLUDE_SUBDOMAINS =True
     SECURE_HSTS_PRELOAD =True
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+else:
+   DEBUG = True
 
 DATABASE_URL= config('HOST')
 DATABASES = {'default':dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
@@ -71,6 +73,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 
     "corsheaders.middleware.CorsMiddleware",
 
@@ -141,9 +144,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+MEDIA_URL = "/media/"
 MEDIA_ROOT=os.path.join(BASE_DIR, 'media')
-MEDIA_URL='/media/'
+STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
+WHITENOISE_MANIFEST_STRICT = False
 CORS_ALLOWED_ORIGINS = [
     "https://epcommerce.vercel.app",
     'http://localhost:3000'
