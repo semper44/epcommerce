@@ -32,7 +32,7 @@ SECRET_KEY =SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-ALLOWED_HOSTS = ["http://localhost:3000", '127.0.0.1']
+ALLOWED_HOSTS = []
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     DEBUG = False
@@ -152,7 +152,6 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 WHITENOISE_MANIFEST_STRICT = False
 CORS_ALLOWED_ORIGINS = [
     "https://epcommerce.vercel.app",
-    'http://localhost:3000'
     # Add any other allowed origins as needed
 ]
 
