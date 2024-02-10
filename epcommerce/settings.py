@@ -15,6 +15,9 @@ from datetime import timedelta
 import dj_database_url
 from decouple import config
 import environ
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 
 env= environ.Env()
@@ -32,7 +35,7 @@ SECRET_KEY =SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["http://localhost:3000", '127.0.0.1', 'http://127.0.0.1:8000']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     DEBUG = False
@@ -55,6 +58,8 @@ DATABASES = {'default':dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -69,6 +74,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
+    'cloudinary',
+
 ]
 
 MIDDLEWARE = [
@@ -152,6 +159,7 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 WHITENOISE_MANIFEST_STRICT = False
 CORS_ALLOWED_ORIGINS = [
     "https://epcommerce.vercel.app",
+    'http://localhost:3000'
     # Add any other allowed origins as needed
 ]
 
@@ -263,4 +271,9 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+cloudinary.config( 
+  	cloud_name ='dboagqxsq',
+  	api_key =725341687541998,
+  	api_secret ='mECBTg47TvbhaXePH3Gb4Z78hzg'
+)
 

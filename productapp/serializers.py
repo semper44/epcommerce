@@ -1,5 +1,6 @@
 from .models import Product, Cart
 from profileapp.models import Profile
+from profileapp.serializers import profileapi
 from rest_framework import serializers
 import json
 
@@ -7,55 +8,33 @@ import json
 
 
 class productapi(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    def get_image_url(self, obj):
+        # Assuming obj.pics is a Cloudinary resource
+        if obj.image:
+            # Extract the Cloudinary public ID
+            public_id = obj.image.public_id
+            # Construct the full Cloudinary image URL
+            cloudinary_url = f'http://res.cloudinary.com/dboagqxsq/image/upload/{public_id}'
+            return cloudinary_url
+        return None  
+    
     class Meta:
         model= Product
         fields= "__all__"
 
 class productCartApi(serializers.ModelSerializer):
-    # qty= serializers.SerializerMethodField("product_qty")
-
-    # def product_qty(self, id):
-    #     
+    
     class Meta:
         model= Product
-        fields= ["id", "image", "category", "price", "sellers"]
+        fields= ["id", "image","category", "price", "sellers", ]
 
-
-# class ProfileSerialized(serializers.ModelSerializer):
-#     class Meta:
-#         model= Profile
-#         fields= ['user']
-
-
-
-# class ProductSerialized(serializers.ModelSerializer):
-#     UserProfile = serializers.SerializerMethodField()  
-#     class Meta:
-#         model = Product
-#         fields =['description', 'price', 'size', 'UserProfile']
-
-#     def get_UserProfile(self, obj):
-#         # value = obj.get_values()
-#         # UserProfile = Profile.objects.filter(mergefields_contained_by=value)
-#         return "ProductSerialized"
-        
-    
 
 class Cartapi(serializers.ModelSerializer):
-    item_qty = serializers.SerializerMethodField("_get_item_qty")  
-    # item=("id", "image", "category", "price")
-    def _get_item_qty(self, obj):
-        qty={}
-        for i in json.loads(obj.item_qty):
-            qty[i] = qty.get(i, 0) + 1
-        return qty
-    # value = obj.get_values(
-    # UserProfile = Profile.objects.filter(mergefields_contained_by=value)
-        # 
-    # product= productCartApi(many=True)
     class Meta:
         model= Cart
-        fields=["item_qty", "item"]
+        fields=["item_qty", "item", "totalAmount"]
         depth= 1
 
 class SimpleCartapi(serializers.ModelSerializer):
@@ -77,8 +56,48 @@ class MostBoughtCategoryapi(serializers.ModelSerializer):
         fields=["category"]
         # depth= 1
        
-       
-     
-        
-        
+# Assuming you have serializers for Product and Profile models, create or update them as follows:
+
+class ProductSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    def get_image_url(self, obj):
+        # Assuming obj.pics is a Cloudinary resource
+        if obj.image:
+            # Extract the Cloudinary public ID
+            public_id = obj.image.public_id
+            # Construct the full Cloudinary image URL
+            cloudinary_url = f'http://res.cloudinary.com/dboagqxsq/image/upload/{public_id}'
+            return cloudinary_url
+        return None 
+    class Meta:
+        model = Product
+        fields = '__all__'
+
+class ProfileSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    def get_image_url(self, obj):
+        # Assuming obj.pics is a Cloudinary resource
+        if obj.pics:
+            # Extract the Cloudinary public ID
+            public_id = obj.pics.public_id
+            # Construct the full Cloudinary image URL
+            cloudinary_url = f'http://res.cloudinary.com/dboagqxsq/image/upload/{public_id}'
+            return cloudinary_url
+        return None 
+    class Meta:
+        model = Profile
+        fields = '__all__'
+
+
+class SearchResultsSerializer(serializers.Serializer):
+    products = ProductSerializer(many=True)
+    profiles = ProfileSerializer(many=True)
+
+    def to_representation(self, instance):
+        return {
+            'products': ProductSerializer(instance.get('products', []), many=True).data,
+            'profiles': ProfileSerializer(instance.get('profiles', []), many=True).data,
+        }
 

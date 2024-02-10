@@ -5,7 +5,6 @@ from .models import Profile, Relationship, Review, productNotifications
 
 @receiver(post_save, sender=User)
 def profile_create(sender, instance, created, **kwargs):
-    print('hey')
     if created:
         Profile.objects.create(user=instance)
 

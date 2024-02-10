@@ -1,6 +1,7 @@
 from datetime import datetime
 from django.db import models
 from profileapp.models import Profile
+from cloudinary.models import CloudinaryField
 
 # from django.contrib.postgres.fields.jsonb import JSONField
 
@@ -21,15 +22,16 @@ PRODUCT_CHOICES=(
 class Product(models.Model):
     category= models.CharField( max_length= 50, choices= PRODUCT_CHOICES)
     description = models.CharField(max_length=70, blank=True, null=True)
-    image = models.ImageField(null = True, blank =True, upload_to=upload_to, default='/posts/default.png')
+    image = CloudinaryField('image', null = True, blank =True)
     price = models.FloatField()
     sellers= models.ForeignKey(Profile, on_delete= models.CASCADE,  related_name= "sellers")
     size = models.IntegerField(blank=True, null=True)
     color = models.CharField(max_length=70, blank=True, null=True)
-    sellerName = models.CharField(max_length=70,default="kosi")
+    sellerName = models.CharField(max_length=70)
 
     def __str__(self):
         return self.category
+
 
 CART_CHOICES=(
     ("yes", "yes"),
@@ -41,6 +43,7 @@ class Cart(models.Model):
     owners= models.ForeignKey(Profile, on_delete=models.CASCADE)
     completed= models.CharField(max_length=20, choices=CART_CHOICES, default="no")
     item_qty= models.TextField()
+    totalAmount= models.IntegerField( blank=True, null=True)
     cartSize= models.TextField(default=0)
     reference=models.CharField(max_length=20, blank=True, null=True)
     # def __str__(self):

@@ -1,5 +1,4 @@
-import json
-import requests
+from django.utils.encoding import force_bytes
 import datetime
 from django.utils.encoding import smart_str, smart_bytes, DjangoUnicodeDecodeError
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -8,22 +7,24 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from .utils import Util
 from django.core.cache import cache
+import environ
 # import pytz
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser 
-from django.db.models import Q
+# from django.db.models import Q
 from django.contrib.auth.models import User, Group
-from productapp.serializers import SimpleCartapi
+# from productapp.serializers import SimpleCartapi
 from productapp.models import Cart, Product
-from .models import Profile, Review, Relationship, Notifications
+from .models import Profile, Review, Notifications
 from productapp.serializers import productCartApi
 from .serializers import (
     profileapi, 
+    Someprofileapi,
     RelationshipApi, 
     ReviewApi, 
     NotificationApi,
@@ -40,6 +41,9 @@ from .serializers import (
 # class CustomRedirect(HttpResponsePermanentRedirect):
 
 #     allowed_schemes = [os.environ.get('APP_SCHEME'), 'http', 'https']
+
+env= environ.Env()
+environ.Env.read_env()
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -75,14 +79,14 @@ class UserRegistrationView(generics.CreateAPIView):
 
 class UserProfileDetails(APIView):
     def  get(self, request, username):
-        # user= self.request.user.id
         try:
             prof= User.objects.get(username=username)
-            user= Profile.objects.filter(user=prof) 
-            serializer= profileapi(user, many=True, context={'request':request})
+            user= Profile.objects.get(user=prof) 
+            serializer= profileapi(user, context={'request':request})
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except:
-            return Response({"msg":"Profile does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"msg": "Profile does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class prof_pics_update(generics.UpdateAPIView):
@@ -109,29 +113,27 @@ class UserProfileDelete(APIView):
             return Response({"msg":"error"}, status=status.HTTP_400_BAD_REQUEST)
 
 class BlockSeller(APIView):
-    permission_classes=[permissions.IsAdminUser]
+    # permission_classes=[permissions.IsAdminUser]
     def  post(self, request, pk):
         user= User.objects.get(id = pk)
         profile= Profile.objects.get(id = pk)
         sellersgroup= User.objects.filter(id = pk, groups__name= "bannedSellers")
         groups= Group.objects.get(name = "bannedSellers")
         # 
-        if sellersgroup.exists()== False:
+        if sellersgroup.exists()== True:
+            return Response({"msg":"User already blocked"}, status=status.HTTP_400_BAD_REQUEST)         
+        else:
             groups.user_set.add(user)
             profile.blocked=True
             profile.save(update_fields=["blocked"])
-
-                    # user= self.request.user.id
             return Response(status=status.HTTP_200_OK)
-        else:
-            return Response({"msg":"User already blocked"}, status=status.HTTP_400_BAD_REQUEST)
-
+            
 class UnblockUser(APIView):
     def  post(self, request, pk):
         user= User.objects.get(id = pk)
         profile= Profile.objects.get(id = pk)
-        sellersgroup= User.objects.filter(id = pk, groups__name= "bannedSellers")
-        groups= Group.objects.get(name = "bannedSellers")
+        sellersgroup= User.objects.filter(id = pk, groups__name= "bannedUsers")
+        groups= Group.objects.get(name = "bannedUsers")
         # 
         if sellersgroup.exists()== True:
             groups.user_set.remove(user)
@@ -143,25 +145,38 @@ class UnblockUser(APIView):
             return Response({"msg":"User not blocked"}, status=status.HTTP_400_BAD_REQUEST)
 
 class UnblockSeller(APIView):
-    def post(self, request, username):
+    def  post(self, request, pk):
+        user= User.objects.get(id = pk)
+        profile= Profile.objects.get(id = pk)
+        sellersgroup= User.objects.filter(id = pk, groups__name= "bannedSellers")
+        groups= Group.objects.get(name = "bannedSellers")
+        if profile.blocked == True:
+            if sellersgroup.exists()== True:
+                groups.user_set.remove(user)
+                profile.blocked=False
+                profile.save(update_fields=["blocked"])
+                        # user= self.request.user.id
                 return Response(status=status.HTTP_200_OK)
+            else:
+                return Response({"msg":"User not blocked"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+                return Response({"msg":"User not blocked"}, status=status.HTTP_417_EXPECTATION_FAILED)
 
      
 class BlockUser(APIView):
-    permission_classes=[permissions.IsAdminUser]
     def  post(self, request, pk):
         user= User.objects.get(id = pk)
         profile= Profile.objects.get(id = pk)
         sellersgroup= User.objects.filter(id = pk, groups__name= "bannedUsers")
         groups= Group.objects.get(name = "bannedUsers")
-        # 
-        if sellersgroup.exists()== False:
+        if sellersgroup.exists()== True:
+            return Response({"msg":"error"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
             groups.user_set.add(user)
             profile.blocked=True
             profile.save(update_fields=["blocked"])
             return Response(status=status.HTTP_200_OK)
-        else:
-            return Response({"msg":"error"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class SellersProfileForm(generics.UpdateAPIView):
     permission_classes= [permissions.IsAuthenticated]
@@ -175,10 +190,9 @@ class SellersProfileForm(generics.UpdateAPIView):
                 serializer.save()
                 user.tags="seller"
                 user.save(update_fields=["tags"]) 
-                return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response("successful", status=status.HTTP_200_OK)
             else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+                return Response(serializer.data, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -234,11 +248,9 @@ class Follow(APIView):
     permission_classes= [permissions.IsAuthenticated]
     def post(self, request, username, format=None):
             sender = request.user.id
-            user= User.objects.get(username=username)
-            receiver =user.id
-            receiver_followers= Profile.objects.filter(user=user)
-            followers=receiver_followers.values_list("followers")
-            follow=len(followers)
+            profile = get_object_or_404(Profile.objects.select_related('user'), user__username=username)
+            receiver = profile.user.id
+            follow = profile.followers.count()
             #             # profiles = friend.friends.get(id=id)
             data={"sender":sender, "receiver":receiver, "status":"accept", "followers":follow}
             serializer= RelationshipApi(data=data)
@@ -252,20 +264,22 @@ class Follow(APIView):
 class Unfollow(APIView):
     permission_classes= [permissions.IsAuthenticated]
     def post(self, request, username, format=None):
-            sender = request.user.id
-            user= User.objects.get(username=username)
-            receiver =user.id
-            receiver_followers= Profile.objects.filter(user=user)
-            followers=receiver_followers.values_list("followers")
-            follow=len(followers)
-            #             # print(receiver.followers.all())
-            data={"sender":sender, "receiver":receiver, "status":"delete", "followers":follow}
-            serializer= RelationshipApi(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        sender = request.user.id
+        profile = get_object_or_404(Profile.objects.select_related('user'), user__username=username)
+        receiver = profile.user.id
+        follow = profile.followers.count()
+        # followers=receiver_followers.values_list("followers")
+        # follow=len(followers)
+        # follow = receiver_followers.first().followers.count()
+        data={"sender":sender, "receiver":receiver, "status":"delete", "followers":follow}
+        serializer= RelationshipApi(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 class AllProfiles(generics.ListAPIView):
     queryset= Profile.objects.all()
@@ -282,27 +296,25 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
     serializer_class = ResetPasswordEmailRequestSerializer
 
     def post(self, request, format=None):
-        # serializer = self.serializer_class(data=request.data)
+        emailurl=env("EmailUrl")
         email = request.data["email"]
-        username= request.user.username
-        if User.objects.filter(email=email).exists():
-            user = User.objects.get(email=email)
-            uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
-            token = PasswordResetTokenGenerator().make_token(user)
-            # current_site = get_current_site(
-            #     request=request).domain
-            relativeLink = reverse(
-                'password-reset-confirm', kwargs={'uidb64': uidb64, 'token': token})
-            redirect_url = request.data.get('redirect_url', '')
-            url=" http://localhost:3000"
 
-            absurl = 'http://'+url+ relativeLink
+        if User.objects.filter(email=email).exists():
+            token_generator = PasswordResetTokenGenerator()
+            user = User.objects.get(email=email)
+            token = token_generator.make_token(user)
+            relativeLink = reverse('password-reset-confirm', kwargs={'uidb64': user.id, 'token': token})
+            redirect_url = request.data.get('redirect_url', '')
+            EmailUrl=emailurl
+            absurl = EmailUrl+ relativeLink
             email_body = 'Hello, \n Use link below to reset your password  \n' + \
                 absurl
             data = {'email_body': email_body, 'to_email': user.email,
                     'email_subject': 'Reset your passsword'}
             Util.send_email(data)
-        return Response({'success': 'We have sent you a link to reset your password'}, status=status.HTTP_200_OK)
+            return Response({'success': 'We have sent you a link to reset your password'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'success': 'Please enter the email you registered with'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class PasswordTokenCheckAPI(generics.GenericAPIView):
@@ -312,7 +324,7 @@ class PasswordTokenCheckAPI(generics.GenericAPIView):
 
         # redirect_url = request.GET.get('redirect_url')
         try:
-            id = smart_str(urlsafe_base64_decode(uidb64))
+            id = uidb64
             user = User.objects.get(id=id)
 
             if not PasswordResetTokenGenerator().check_token(user, token):
@@ -399,18 +411,22 @@ class CreateReview(APIView):
 
     def post(self, request, format=None):
         receiver= User.objects.get(username=request.data["receiver"])
-        data={
-            "value":request.data["value"],
-            "text":request.data["text"],
-            "sender":request.data["sender"],
-            "receiver":receiver.id
-        }
-        serializer= ReviewApi(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        existing_reviews = Review.objects.filter(sender=request.data["sender"], receiver=receiver.id)
+        if existing_reviews.exists():
+            return Response({'msg':'Already reviewed this User'}, status=status.HTTP_417_EXPECTATION_FAILED)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            data={
+                "value":request.data["value"],
+                "text":request.data["text"],
+                "sender":request.data["sender"],
+                "receiver":receiver.id
+            }
+            serializer= ReviewApi(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # class AllReviews(APIView):
 #     def  get(self, request, pk):
@@ -432,7 +448,6 @@ class PostNotifications(APIView):
 
     def post(self, request, format=None):
         serializer= NotificationApi(data=request.data)
-        # print(request.data
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -522,22 +537,34 @@ class MonthlyUsers(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
 class YourOrders(APIView):
-    permission_classes= [permissions.IsAuthenticated]
+    # permission_classes= [permissions.IsAuthenticated]
     # serializer_class= SimpleCartapi
-    def  get(self, request, **kwargs):
-        profile=self.request.user.id
-        cart=Cart.objects.filter(owners=profile, completed="yes")
-        arr=[]
-        if cart.exists():
-            for i in cart:
-                cartProduct= i.item.all()
-                item= productCartApi(cartProduct, many=True, context={'request':request})
-                datas={"serializer":item.data,  "item_qty":i.item_qty}
-                arr.append(datas)
-                        # pass
-            return Response(arr, status=status.HTTP_200_OK)
+    def  get(self, request,username, **kwargs):
+        userexists = User.objects.filter(username=username)
+        if userexists.exists():
+            user = User.objects.get(username=username)
+            profile= Profile.objects.select_related('user').get(user = user)
+            cart=Cart.objects.filter(owners=profile, completed="yes")
+            arr=[]
+            if cart.exists():
+                for i in cart:
+                    cartProduct= i.item.all()
+                    item= productCartApi(cartProduct, many=True, context={'request':request})
+                    datas={"serializer":item.data,  "item_qty":i.item_qty}
+                    arr.append(datas)
+                            # pass
+                return Response(arr, status=status.HTTP_200_OK)
+            else:
+                return Response({"msg":"No purchased product found"}, status=status.HTTP_417_EXPECTATION_FAILED)
         else:
-            return Response({"msg":"No purchased product found"}, status=status.HTTP_417_EXPECTATION_FAILED)
+            return Response({"msg":"Sorry an error occured"}, status=status.HTTP_404_NOT_FOUND)
+
+class AllUsers(APIView):
+    def get(self, request):
+        total=Profile.objects.all()
+        serializer = Someprofileapi(total, many= True, context={'request':request})
+        return Response(serializer.data, status=status.HTTP_200_OK) 
+
 
 TOTAL_USERS="tasks.users"
 class TotalUsers(APIView):

@@ -32,6 +32,7 @@ from .views import (
     AllFollowers,
     AllFollowing,
     MonthlyUsers,
+    AllUsers,
     YourOrders,
     TotalUsers,
     UserRegistrationView,
@@ -50,6 +51,7 @@ urlpatterns = [
     path('blockuser/<int:pk>/', BlockUser.as_view(), name='blockuser'),   
     path('blockseller/<int:pk>/', BlockSeller.as_view(), name='blockseller'),   
     path('unblockseller/<int:pk>/', UnblockSeller.as_view(), name='unblockseller'),   
+    path('unblockuser/<int:pk>/', UnblockUser.as_view(), name='unblockuser'),   
     path('reset_password/', RequestPasswordResetEmail.as_view(),name="reset_password"),
     path('password-reset/<uidb64>/<token>/', PasswordTokenCheckAPI.as_view(), name='password-reset-confirm'),
     # path('password-change/', passwordChange,name="password-change"),
@@ -80,7 +82,8 @@ urlpatterns = [
     # path('checkflutterwave/<int:pk>/', checkFlutterWave.as_view(), name='getnotifications'),   
     path('monthlyusers/', MonthlyUsers.as_view(), name='monthlyusers'),   
     path('totalusers/', TotalUsers.as_view(), name='totalusers'),   
-    path('yourorders/', YourOrders.as_view(), name='ordersusersmade'),   
+    path('allusers/', AllUsers.as_view(), name='allusers'),   
+    path('yourorders/<str:username>/', YourOrders.as_view(), name='ordersusersmade'),   
     # path('request-reset-email/', RequestPasswordResetEmail.as_view(),
     #      name="request-reset-emai"
 ]

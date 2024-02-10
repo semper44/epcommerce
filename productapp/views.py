@@ -2,13 +2,13 @@ import json
 # import math
 import datetime
 from django.shortcuts import render, redirect
-from .serializers import productapi,productCartApi, Cartapi, MostBoughtCategoryapi
+from .serializers import productapi,productCartApi, SearchResultsSerializer
 from .models import Product, Cart
 from profileapp.models import Profile
 from profileapp.serializers import profileapi
-from .permissions import Sellerspermission
-from django.http import HttpResponse
+from .permissions import SellersPermission
 import requests
+from django.db.models import Q
 from django.contrib.auth.models import User
 
 # import secrets
@@ -30,7 +30,7 @@ environ.Env.read_env()
 # Create your views here.
 class CreatePost(APIView):
     parser_classes= [MultiPartParser, FormParser]
-    permission_classes= [Sellerspermission | permissions.IsAuthenticated]
+    permission_classes= [SellersPermission, permissions.IsAuthenticated]
 
     def post(self, request, format=None):
         serializer= productapi(data=request.data)
@@ -45,7 +45,7 @@ class GetProducts(generics.ListCreateAPIView):
     serializer_class= productapi
 
 class DeleteProducts(APIView):
-    permission_classes= [Sellerspermission|permissions.IsAdminUser]
+    permission_classes= [SellersPermission|permissions.IsAdminUser]
 
     # permission_classes= ([permissions.IsAdminUser | permissions.IsAuthenticated])
     def delete(self, request, pk):
@@ -98,33 +98,34 @@ class EditProducts(generics.RetrieveUpdateAPIView):
 class sellers_product(generics.ListAPIView):
     serializer_class= productapi
     def get(self, request, pk, *args, **kwargs):
-                requester=self.request.user.id
-                user=pk
-                obj= Product.objects.filter(user=pk)
-                serializer= productapi(obj, many=True, context={'request':request})
-                return Response(serializer.data, status=status.HTTP_200_OK)
+        requester=self.request.user.id
+        user=pk
+        obj= Product.objects.filter(user=pk)
+        serializer= productapi(obj, many=True, context={'request':request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class AddToCart(APIView):
     parser_classes= [MultiPartParser, FormParser]
     permission_classes= [permissions.IsAuthenticated]
     def post(self, request, format=None):
-            if request.user.id:
-                profile=Profile.objects.get(user=request.user.id)
-                items= json.loads(request.data["item"])
-                qty= request.data["item_qty"]
-                cartSize= json.loads(request.data["cartSize"])
-                cart= Cart.objects.filter(owners=request.user.id, completed="no")
-                # cart.form()
-                if cart.exists():
-                    cart.delete()
-                carts= Cart.objects.create(owners=profile, item_qty= qty, cartSize=cartSize)
-                for i in items:
-                    itemz=Product.objects.get(id=i)
-                    carts.item.add(itemz)
-                carts.save()
-                return Response(status=status.HTTP_200_OK)
-            else:
-                return Response({"msg": "Sorry, you dont have the necessary permissions for this"},status=status.HTTP_401_UNATHOURIZED)
+        if request.user.id:
+            profile=Profile.objects.get(user=request.user.id)
+            items= json.loads(request.data["item"])
+            
+            qty= request.data["item_qty"]
+            cartSize= json.loads(request.data["cartSize"])
+            totalAmount= json.loads(request.data["totalAmount"])            
+            cart= Cart.objects.filter(owners=request.user.id, completed="no")
+            if cart.exists():
+                cart.delete()
+            carts= Cart.objects.create(owners=profile, item_qty= qty, cartSize=cartSize, totalAmount=totalAmount)
+            for i in items:
+                itemz=Product.objects.get(id=i)
+                carts.item.add(itemz)
+            carts.save()
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response({"msg": "Sorry, you dont have the necessary permissions for this"},status=status.HTTP_401_UNATHOURIZED)
 
 RETRIEVE_CART="taks.retrievecart"
 class RetrieveCart(APIView):
@@ -138,8 +139,7 @@ class RetrieveCart(APIView):
                     cartProduct= i.item.all()
                     item= productCartApi(cartProduct, many=True, context={'request':request})
                 #     preserint("i.item_qty")
-
-                datas={"serializer":item.data, "id":i.id, "cartSize":i.cartSize, "item_qty":i.item_qty}
+                datas={"serializer":item.data, "id":i.id, "cartSize":i.cartSize, "item_qty":i.item_qty, "totalAmount":i.totalAmount}
                 cache.set(RETRIEVE_CART, datas)
                 return Response(datas, status=status.HTTP_200_OK)
             else:
@@ -148,22 +148,15 @@ class RetrieveCart(APIView):
         return Response(tasks, status=status.HTTP_200_OK)
 
 class PlaceOrder(APIView):
-    permission_classes= [permissions.IsAuthenticated]
-
+    permission_classes= [SellersPermission,  permissions.IsAuthenticated]
     def post(self, request, *args, **kwargs):       
-        auth_token = env("PAYSTACK_AUTH_TOKEN")
-        hed = {'Authorization': 'Bearer' + auth_token}
-        # print(request.data)
-        print(request.data["cartId"])
+        hed2 = {'Authorization': 'Bearer sk_test_339102877aede0b62c4c8baa085b424e84dcb0ce'}      
         cartId=request.data["cartId"]
         if cartId==None or cartId=="null":
-            print("in")
             profile=Profile.objects.get(user=request.user.id)
             items= json.loads(request.data["item"])
             qty= request.data["item_qty"]
             cartSize= json.loads(request.data["cartSize"])
-            print(request.data)
-            print("request.data")
             carts= Cart.objects.create(owners=profile, item_qty= qty, cartSize=cartSize)
             for i in items:
                 itemz=Product.objects.get(id=i)
@@ -177,8 +170,7 @@ class PlaceOrder(APIView):
                 "metadata":metadata
                 }
             url = 'https://api.paystack.co/transaction/initialize' 
-            print(f"http://localhost:3000/confirmandupdateorder/{carts.id}/")       
-            response = requests.post(url, data=datum, headers=hed)
+            response = requests.post(url, data=datum, headers=hed2)
             responses=response.json()
             # link=response['data']['link']
             if responses["status"]==True:
@@ -196,7 +188,7 @@ class PlaceOrder(APIView):
                 "metadata":metadata
                 }
             url = 'https://api.paystack.co/transaction/initialize'        
-            response = requests.post(url, data=datum, headers=hed)
+            response = requests.post(url, data=datum, headers=hed2)
             responses=response.json()
             # link=response['data']['link']
             if responses["status"]==True:
@@ -292,46 +284,45 @@ class AllCategories(APIView):
 #     serializer_class= productapi
 #     filter_class = ProductSearchFilter
 #     search_fields=['category', 'price', 'size', 'description' ]
+# from rest_framework.views import APIView
+# from rest_framework.response import Response
+# from rest_framework import status
+# from .models import Product, Profile
+# from .serializers import SearchResultsSerializer
 
-    # filterset_backends=(DjangoFilterBackend)
-class SearchApiview(FlatMultipleModelAPIView):
-    def get_querylist(self):
-        category=self.request.query_params.get("category", None)
-        size=self.request.query_params.get("size", None)
-        price=self.request.query_params.get("price", None)
-        color=self.request.query_params.get("color", None)
-        profile=self.request.query_params.get("profile", None)
-        product=self.request.query_params.get("product", None)      
-        if (category==None or category=='') and (price==None or price=='') and (size==None or len(size)==0) and (color==None or color=='')and (profile==None or profile==''):
-            return
-        elif category and (price==None or price=='') and (size==None or size=='') and (color==None or color=='')and (profile==None or profile==''):
-            return [{'queryset':Product.objects.filter(category=category), 'serializer_class':productapi}]
-        
-        elif (size) and (price==None or price=='') and (category==None or category=='') and (color==None or color=='')and (profile==None or profile==''):
-                        return [{'queryset':Product.objects.filter(size=int(size)), 'serializer_class':productapi}]
-        
-        elif price and (category==None or category=='') and (size==None or size=='') and (color==None or color=='')and (profile==None or profile==''):
-            return [{'queryset':Product.objects.filter(price__lte=int(price)), 'serializer_class':productapi}   ]
-        
-        elif color and (price==None or price=='') and (size==None or size=='') and (category==None or category=='')and (profile==None or profile==''):
-            return  [{'queryset':Product.objects.filter(color=color), 'serializer_class':productapi}]
-        
-        elif profile and (price==None or price=='') and (size==None or size=='') and (color==None or color=='')and (category==None or category==''):
-                        return [{'queryset':Profile.objects.filter(user=int(profile)), 'serializer_class':profileapi}
-    ]
-        elif price and category and size==None and color==None and profile==None:
-            return  [{'queryset':Product.objects.filter(category=category, price__range=(1, int(price))), 'serializer_class':productapi}]
-        # elif category and price
-        #     return Product.objects.filter(category=category)
-        elif category and price and color  and size==None and profile==None:
-            return [{'queryset':Product.objects.filter(category=category, color=color, price__range=(1, int(price))), 'serializer_class':productapi}]
-       
-        elif price and color and size and category==None and profile==None:
-                        return [{'queryset':Product.objects.filter(color=color, size=int(size), price__range=(1, int(price))), 'serializer_class':productapi}]
-        
-        
-# In a Django-like app:
+# views.py
 
+class SearchResultsView(APIView):
+    serializer_class = SearchResultsSerializer
+
+    def get(self, request, *args, **kwargs):
+        query = self.request.query_params.get('query', '')
+        size = self.request.query_params.get('size', '')
+        color = self.request.query_params.get('color', '')
+        price = self.request.query_params.get('price', '')
+
+        # Perform separate queries for Product and Profile
+        product_results = Product.objects.filter(Q(description__icontains=query )| Q(category__icontains=query ))
+        profile_results = Profile.objects.filter(
+            Q(user__username__icontains=query) |
+            Q(location__icontains=query)
+        )
+
+        # Add optional filters for Product
+        if size:
+            product_results = product_results.filter(size=size)
+        if color:
+            product_results = product_results.filter(color=color)
+        if price:
+            product_results = product_results.filter(price=price)
+
+        # Serialize the combined results
+        serializer = SearchResultsSerializer({
+            'products': product_results,
+            'profiles': profile_results
+        })
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 # class CreateCheckOutSession(APIView):
 #     def post(self, request, *args, **kwargs):
 #         prod_id=self.kwargs["pk"]
