@@ -46,7 +46,6 @@ class GetProducts(generics.ListCreateAPIView):
 
 class DeleteProducts(APIView):
     permission_classes= [SellersPermission|permissions.IsAdminUser]
-
     # permission_classes= ([permissions.IsAdminUser | permissions.IsAuthenticated])
     def delete(self, request, pk):
         item= Product.objects.get(id=pk)

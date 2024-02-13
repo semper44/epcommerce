@@ -6,6 +6,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from .utils import Util
+from itertools import chain
 from django.core.cache import cache
 import environ
 # import pytz
@@ -21,7 +22,7 @@ from django.contrib.auth.models import User, Group
 # from productapp.serializers import SimpleCartapi
 from productapp.models import Cart, Product
 from .models import Profile, Review, Notifications
-from productapp.serializers import productCartApi
+from productapp.serializers import productCartApi, productapi
 from .serializers import (
     profileapi, 
     Someprofileapi,
@@ -572,11 +573,77 @@ class TotalUsers(APIView):
         tasks= cache.get(TOTAL_USERS)
         user_counts={}
         if not tasks:
+            today= datetime.datetime.today()
+            previous_month = today.month-1
+            # querysetUser= User.objects.filter(date_joined__month=today.month)
+            querysetSellers= Profile.objects.filter(date_joined__month=today.month, tags='seller')
+            querysetBuyers= Profile.objects.filter(date_joined__month=today.month, tags='no-seller')
+            querysetGoods= Product.objects.filter(date_created__month=today.month)
+            
+            serializersSellers= profileapi(querysetSellers, many=True)
+            serializersBuyers= profileapi(querysetBuyers, many=True)
+            serializersGoods= productapi(querysetGoods, many=True)
+            currentSellers=len(serializersSellers.data)
+            currentBuyers=len(serializersBuyers.data)
+            currentGoods=len(serializersGoods.data)
+
+            # querysets= User.objects.filter(date_joined__month= previous_month)
+            querysetSellers2= Profile.objects.filter(date_joined__month=previous_month, tags='seller')
+            querysetBuyers2= Profile.objects.filter(date_joined__month=previous_month, tags='no-seller')
+            querysetGoods2= Product.objects.filter(date_created__month=previous_month)
+           
+            serializersSellers2= profileapi(querysetSellers2, many=True)
+            serializersBuyers2= profileapi(querysetBuyers2, many=True)
+            serializersGoods2= productapi(querysetGoods2, many=True)
+
+            previousSellers2=len(serializersSellers2.data)
+            previousBuyers2=len(serializersBuyers2.data)
+            previousGoods2=len(serializersGoods2.data)
+            
             total=Profile.objects.all()
             goods=Product.objects.all().count()
+            
+            # PRODUCT_CHOICES=(
+            #     ("electronics", "electronics"),
+            #     ("computing", "computing"),
+            #     ("home & office", "home & office"),
+            #     ("baby product", "baby product"),
+            #     ("game", "game"),
+            #     ("fashion", "fashion"),
+            # )
+
+            # electronics = Product.objects.filter(category="electronics")
+            # computing = Product.objects.filter(category="computing")
+            # hf = Product.objects.filter(category="home & office")
+            # bp = Product.objects.filter(category="baby product")
+            # fashion = Product.objects.filter(category="fashion")
+            # game = Product.objects.filter(category="game")
+            # ur = {}
+
+            allProducts = Product.objects.all()
+            for x in allProducts:
+                user_counts[x.category] = user_counts.get(x.category, 0) + 1
+                # ur.update({})
+
+
             for i in total:
                 user_counts[i.tags] = user_counts.get(i.tags, 0) + 1
-            user_counts.update({"goods":goods})
+                # Get all distinct choices from PRODUCT_CHOICES
+            user_counts.update({"goods":goods,'currentGoods':currentGoods,
+                                'currentBuyers':currentBuyers,
+                                'currentSellers':currentSellers,
+                                'previousGoods2':previousGoods2,
+                                'previousBuyers2':previousBuyers2,
+                                'previousSellers2':previousSellers2,
+                                # 'electronics':len(electronics),
+                                # 'computing':len(computing),
+                                # 'home&office':len(hf),
+                                # 'fashion':len(fashion),
+                                # 'babyproduct':len(bp),
+                                # 'game':len(game)
+                                })
+            if user_counts.get('seller') is None:#
+                user_counts.update({'seller':0})
             cache.set(TOTAL_USERS, user_counts)
             return Response(user_counts, status=status.HTTP_200_OK)
         return Response(tasks, status=status.HTTP_200_OK)

@@ -10,6 +10,7 @@ from cloudinary.models import CloudinaryField
 def upload_to(instance, filename):
     return 'posts/{filename}'.format(filename=filename)
 
+
 PRODUCT_CHOICES=(
     ("electronics", "electronics"),
     ("computing", "computing"),
@@ -18,6 +19,7 @@ PRODUCT_CHOICES=(
     ("game", "game"),
     ("fashion", "fashion"),
 )
+
 
 class Product(models.Model):
     category= models.CharField( max_length= 50, choices= PRODUCT_CHOICES)
@@ -28,6 +30,8 @@ class Product(models.Model):
     size = models.IntegerField(blank=True, null=True)
     color = models.CharField(max_length=70, blank=True, null=True)
     sellerName = models.CharField(max_length=70)
+    date_created = models.DateTimeField(auto_now_add=True)
+
 
     def __str__(self):
         return self.category

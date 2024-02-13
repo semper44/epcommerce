@@ -40,6 +40,7 @@ BLOCKEDUSERS_CHOICES=(
     ("false", "false",)
 )
 
+
 class Profile(models.Model):
     user= models.OneToOneField(User, on_delete=models.CASCADE)
     pics = CloudinaryField('image', null = True, blank =True, default ='c40te5wgb08lfd5em1pq')
@@ -62,6 +63,8 @@ class Profile(models.Model):
     notification= models.ManyToManyField(productNotifications, related_name="productnotification", blank=True)
     item= models.TextField(null=True, blank=True)
     name=models.SlugField(unique=True, blank=True)
+    date_joined = models.DateTimeField(auto_now_add=True)
+
 
     def save(self, *args, **kwargs):
         if not self.name:
@@ -70,6 +73,7 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user}"
+
 
 
 STATUS_CHOICES = (
