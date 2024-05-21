@@ -1,5 +1,5 @@
 # ecom-ripoff
-A ripoff of my ecommerce app. main code is private, you can contact me for the main code.  
+A documentation of my ecommerce app
 
 **E-Commerce App Documentation**
 ## Table of Contents
