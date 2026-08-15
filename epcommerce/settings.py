@@ -20,44 +20,29 @@ import cloudinary.uploader
 import cloudinary.api
 
 
-env= environ.Env()
-environ.Env.read_env()
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# 1. Setup Env
+env = environ.Env()
 BASE_DIR = Path(__file__).resolve().parent.parent
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
+# 2. FORCE DEBUG FOR NOW (Right at the top)
+DEBUG = True
+ALLOWED_HOSTS = ['*']
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+# 3. Secret Key
+SECRET_KEY = env("DJANGO_SECRET_KEY", default='unsafe-secret-key')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env("DJANGO_SECRET_KEY")
-SECRET_KEY =SECRET_KEY
-
-# SECURITY WARNING: don't run with debug turned on in production!
-
-ALLOWED_HOSTS = ["http://localhost:3000", '127.0.0.1', 'http://127.0.0.1:8000']
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if RENDER_EXTERNAL_HOSTNAME:
-    DEBUG = False
-    SESSION_COOKIE_SECURE= True
-    CSRF_COOKIE_SECURE=True
-    SECURE_HSTS_SECONDS=3600
-    SECURE_SSL_REDIRECT=True
-    SECURE_HSTS_INCLUDE_SUBDOMAINS =True
-    SECURE_HSTS_PRELOAD =True
-    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+# 4. Database (Make sure 'HOST' exists in your .env)
+DATABASE_URL = config('HOST', default=None)
+if DATABASE_URL:
+    DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
 else:
-   DEBUG = True
-
-DATABASE_URL= config('HOST')
-DATABASES = {'default':dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Application definition
@@ -272,8 +257,6 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 cloudinary.config( 
-  	cloud_name ='dboagqxsq',
-  	api_key =725341687541998,
-  	api_secret ='mECBTg47TvbhaXePH3Gb4Z78hzg'
+  	
 )
 
