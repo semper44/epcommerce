@@ -271,9 +271,5 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
-cloudinary.config( 
-  	cloud_name ='dboagqxsq',
-  	api_key =725341687541998,
-  	api_secret ='mECBTg47TvbhaXePH3Gb4Z78hzg'
-)
+
 
