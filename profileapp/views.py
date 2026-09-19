@@ -9,7 +9,6 @@ from .utils import Util
 from itertools import chain
 from django.core.cache import cache
 import environ
-# import pytz
 from django.shortcuts import redirect, render, get_object_or_404
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
