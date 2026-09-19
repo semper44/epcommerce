@@ -256,7 +256,4 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
-cloudinary.config( 
-  	
-)
 
