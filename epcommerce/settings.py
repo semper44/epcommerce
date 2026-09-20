@@ -33,7 +33,7 @@ ALLOWED_HOSTS = ['*']
 SECRET_KEY = env("DJANGO_SECRET_KEY", default='unsafe-secret-key')
 
 # 4. Database (Make sure 'HOST' exists in your .env)
-DATABASE_URL = config('HOST', default=None)
+DATABASE_URL = config('DATABASE_URL', default=None)
 if DATABASE_URL:
     DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
 else:
